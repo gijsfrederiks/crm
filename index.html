@@ -909,8 +909,13 @@
         function initMap() {
             if(map) return;
             map = L.map('map-container').setView([52.1, 5.2], 8); // Center around NL approx
-            // Gebruik CartoDB tegels om "Access Blocked" meldingen van de standaard OSM servers te voorkomen
-            L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', { attribution: '© OpenStreetMap contributors, © CARTO' }).addTo(map);
+            
+            // Standaard OpenStreetMap tegels (Geen API key nodig, werkt 100% via GitHub Pages)
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { 
+                maxZoom: 19,
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' 
+            }).addTo(map);
+            
             updateMapMarkers();
         }
 
