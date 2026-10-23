@@ -1,0 +1,1135 @@
+<!DOCTYPE html>
+<html lang="nl" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project CRM & Logboek</title>
+    
+    <!-- Libraries -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Leaflet (Kaart) -->
+    <link class="no-print" rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <script class="no-print" src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        // Huisstijl Kleuren
+                        brandDarkBlue: '#002f5d',
+                        brandLightBlue: '#0097d8',
+                        brandGreen: '#9dc221',
+                        
+                        // Overschrijf de UI kleuren naar het palet
+                        somBlue: '#0097d8',       
+                        somDarkBlue: '#002f5d',   
+                        
+                        // Status kleuren
+                        somOrange: '#F97316',
+                        somGreen: '#10B981',
+                        somRed: '#EF4444',
+                        somYellow: '#F59E0B',
+                        somTeal: '#14B8A6',
+                        
+                        darkBg: '#0f172a',
+                        darkCard: '#1e293b',
+                        appGray: '#f8fafc',
+                        appDarkBorder: '#334155'
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { transition: background-color 0.3s, color 0.3s; overflow: hidden; }
+        
+        /* App Scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .dark ::-webkit-scrollbar-thumb { background: #475569; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        /* General UI Elements */
+        #map-container { z-index: 1; }
+        .leaflet-popup-content-wrapper { font-family: 'Inter', sans-serif; font-size: 0.8rem; }
+
+        /* --- PRINT STYLES --- */
+        @media print {
+            @page { margin: 1cm; size: A4 portrait; }
+            html, body, body > div, main, #main-scroll-area, .max-w-7xl, .flex-1 { 
+                height: auto !important; 
+                min-height: 0 !important;
+                max-height: none !important;
+                overflow: visible !important; 
+                position: static !important;
+                display: block !important; 
+                flex: none !important;
+                width: auto !important;
+                max-width: none !important;
+            }
+            * { animation: none !important; transition: none !important; }
+            .no-print, nav, aside, #custom-modal, button, .leaflet-control-zoom { display: none !important; }
+            #print-header { display: block !important; margin-bottom: 30px !important;}
+            body, .dark { background-color: white !important; color: black !important; font-size: 11pt; }
+            .dark .bg-darkCard, .bg-white, .bg-gray-50 { background-color: white !important; color: black !important; box-shadow: none !important; border-color: #ccc !important; }
+            .step-section { display: block !important; opacity: 1 !important; visibility: visible !important; page-break-inside: auto; margin-bottom: 2cm; }
+            tr, .bg-white, .bg-gray-50 { page-break-inside: avoid; break-inside: avoid; }
+            textarea, input[type="text"], input[type="date"], select { border: none !important; background: transparent !important; resize: none !important; }
+            table { width: 100%; border-collapse: collapse; font-size: 10pt; }
+            th, td { border: 1px solid #ccc !important; padding: 6px !important; }
+            #map-container { height: 300px !important; border: 1px solid #ccc; page-break-inside: avoid; }
+        }
+        #print-header { display: none; }
+
+        /* Splash Screen */
+        .splash-hidden { opacity: 0 !important; visibility: hidden; transition: opacity 0.6s ease-in-out, visibility 0.6s ease-in-out; }
+    </style>
+</head>
+<body class="bg-appGray dark:bg-darkBg text-slate-800 dark:text-gray-200 font-sans flex flex-col h-screen w-full overflow-hidden">
+
+    <!-- Splash Screen -->
+    <div id="splash-screen" class="fixed inset-0 z-[200] flex flex-col items-center justify-center bg-gradient-to-br from-brandDarkBlue to-[#001226] text-white overflow-hidden transition-opacity duration-700 print:hidden">
+        <div class="text-center">
+            <div class="bg-white/10 p-6 rounded-full inline-block mb-6 backdrop-blur-sm border border-white/20">
+                <svg class="w-20 h-20 text-brandLightBlue" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+            </div>
+            <h1 class="text-4xl font-black tracking-tight mb-2 drop-shadow-md">Project CRM</h1>
+            <p class="text-brandLightBlue text-xl uppercase tracking-[0.2em] font-bold mb-10 drop-shadow-sm">Logboek & Relaties</p>
+            <button onclick="dismissSplash()" class="bg-gradient-to-r from-brandGreen to-[#8ab01c] text-brandDarkBlue px-10 py-3.5 rounded-full font-extrabold hover:scale-105 transition-all shadow-lg flex items-center gap-3 mx-auto text-lg border border-[#a8cf26]">
+                Start Logboek
+            </button>
+        </div>
+    </div>
+
+    <!-- Custom Modal -->
+    <div id="custom-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] hidden flex items-center justify-center transition-all">
+        <div class="bg-white dark:bg-darkCard w-full max-w-md p-6 rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-700">
+            <h3 id="modal-title" class="text-xl font-bold text-gray-900 dark:text-white mb-2">Bevestiging</h3>
+            <p id="modal-msg" class="text-gray-600 dark:text-gray-300 mb-6">Weet je zeker dat je dit wilt doen?</p>
+            <div class="flex justify-end gap-3">
+                <button onclick="closeModal()" class="px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors font-medium">Annuleren</button>
+                <button id="modal-confirm-btn" class="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors shadow-sm font-medium">Bevestigen</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- App Topbar -->
+    <nav class="shrink-0 bg-gradient-to-r from-brandDarkBlue via-[#003B73] to-brandDarkBlue shadow-md border-b-[5px] border-brandLightBlue z-50 print:hidden h-20 flex items-center justify-between px-6 relative">
+        <div class="absolute inset-0 opacity-[0.04] pointer-events-none" style="background-image: radial-gradient(white 1px, transparent 1px); background-size: 16px 16px;"></div>
+
+        <div class="flex items-center gap-8 relative z-10">
+            <!-- App Logo -->
+            <div class="flex items-center gap-4">
+                <div class="relative group cursor-pointer mr-1">
+                    <div class="absolute inset-0 bg-brandGreen rounded-xl rotate-6 scale-105 opacity-90 transition-transform duration-300 group-hover:rotate-12 shadow-lg"></div>
+                    <div class="bg-gradient-to-br from-white to-gray-100 text-brandDarkBlue w-12 h-12 rounded-xl flex items-center justify-center font-black text-xl relative z-10 shadow-inner border border-white transition-transform duration-300">
+                        CRM
+                    </div>
+                </div>
+                <div class="hidden sm:flex flex-col justify-center">
+                    <span class="text-brandLightBlue font-bold text-[10px] uppercase tracking-[0.2em] mb-0.5 opacity-90">Organisatie</span>
+                    <span class="font-extrabold text-2xl text-white tracking-tight drop-shadow-md leading-none">Projectlogboek</span>
+                </div>
+            </div>
+
+            <div class="h-10 w-px bg-white/20 hidden lg:block mx-2"></div>
+
+            <!-- Menu's -->
+            <div class="flex items-center space-x-2 text-sm relative mt-1">
+                <div class="relative">
+                    <button onclick="toggleDropdown('menu-bestand', event)" class="px-4 py-2 rounded-lg hover:bg-white/10 text-white/90 hover:text-white font-medium transition-all flex items-center gap-2">
+                        <svg class="w-4 h-4 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path></svg>
+                        Bestand
+                    </button>
+                    <div id="menu-bestand" class="dropdown-content hidden absolute left-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-100 dark:border-gray-700 py-2 z-50">
+                        <button onclick="openProject(); closeAllDropdowns();" class="w-full text-left px-4 py-2 hover:bg-blue-50 dark:hover:bg-gray-700 flex items-center justify-between text-gray-700 dark:text-gray-200">
+                            <span>📂 Openen...</span>
+                        </button>
+                        <button onclick="saveProjectAs(); closeAllDropdowns();" class="w-full text-left px-4 py-2 hover:bg-blue-50 dark:hover:bg-gray-700 flex items-center justify-between text-gray-700 dark:text-gray-200 border-b border-gray-100 dark:border-gray-700 pb-3 mb-1">
+                            <span>💾 Opslaan als (.json)</span>
+                        </button>
+                        <button onclick="confirmReset(); closeAllDropdowns();" class="w-full text-left px-4 py-2 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center text-red-600 dark:text-red-400 font-bold">
+                            ⚠️ Nieuw / Reset
+                        </button>
+                    </div>
+                </div>
+
+                <div class="relative">
+                    <button onclick="toggleDropdown('menu-export', event)" class="px-4 py-2 rounded-lg hover:bg-white/10 text-white/90 hover:text-white font-medium transition-all flex items-center gap-2">
+                        <svg class="w-4 h-4 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                        Exporteren
+                    </button>
+                    <div id="menu-export" class="dropdown-content hidden absolute left-0 mt-2 w-64 bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-100 dark:border-gray-700 py-2 z-50">
+                        <button onclick="exportToWord(); closeAllDropdowns();" class="w-full text-left px-4 py-2.5 hover:bg-blue-50 dark:hover:bg-gray-700 flex items-center text-somBlue dark:text-blue-400 font-bold">
+                            <span class="mr-3 text-xl">📄</span> Compleet Dossier (Word)
+                        </button>
+                        <button onclick="window.print(); closeAllDropdowns();" class="w-full text-left px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center justify-between text-gray-700 dark:text-gray-200 border-b border-gray-100 dark:border-gray-700 pb-3 mb-1">
+                            <span><span class="mr-3 opacity-70 text-xl">🖨️</span> PDF / Printen</span>
+                        </button>
+                        <button onclick="exportContactsToCSV(); closeAllDropdowns();" class="w-full text-left px-4 py-2 hover:bg-green-50 dark:hover:bg-gray-700 flex items-center text-somGreen dark:text-green-400 font-bold">
+                            <span class="mr-3 text-xl">📊</span> Contacten naar Excel (CSV)
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-4 text-sm relative z-10 mt-1">
+            <div id="save-indicator" class="hidden items-center text-white/90 text-xs italic bg-black/20 border border-white/10 px-3 py-1.5 rounded-full backdrop-blur-sm shadow-inner transition-all">
+                <span class="text-brandGreen font-bold mr-1.5 text-base leading-none">*</span> Wijzigingen
+            </div>
+            
+            <button onclick="toggleDarkMode()" class="p-2 rounded-lg hover:bg-white/10 text-white/80 hover:text-white transition-all focus:outline-none" title="Wissel Dark Mode">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
+            </button>
+        </div>
+    </nav>
+
+    <!-- App Body (Sidebar + Content) -->
+    <div class="flex-1 flex overflow-hidden">
+        
+        <!-- Sidebar Navigation -->
+        <aside class="w-64 bg-white dark:bg-darkCard border-r border-gray-200 dark:border-appDarkBorder flex flex-col shrink-0 print:hidden z-10 shadow-[2px_0_8px_rgba(0,0,0,0.02)]">
+            <div class="p-4 border-b border-gray-100 dark:border-gray-800">
+                <h3 class="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-2">Project</h3>
+                <input type="text" id="project_name" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded px-3 py-2 text-sm text-somDarkBlue dark:text-blue-300 font-bold focus:ring-2 focus:ring-somBlue focus:outline-none placeholder-gray-400" placeholder="Naam project..." oninput="autoSave()">
+            </div>
+            
+            <nav class="flex-1 overflow-y-auto py-4 px-3 space-y-1.5" id="sidebar-nav">
+                <button onclick="switchTab('project')" id="tab-project" class="sidebar-tab w-full text-left px-3 py-2.5 rounded-lg text-sm font-bold transition-all bg-blue-50 text-somBlue dark:bg-blue-900/30 dark:text-blue-400 border-l-4 border-somBlue flex items-center gap-2.5">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    Project Info
+                </button>
+                <button onclick="switchTab('contacts')" id="tab-contacts" class="sidebar-tab w-full text-left px-3 py-2.5 rounded-lg text-sm font-semibold text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all border-l-4 border-transparent flex items-center gap-2.5">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                    Relaties & Contacten
+                </button>
+                <button onclick="switchTab('logs_ext')" id="tab-logs_ext" class="sidebar-tab w-full text-left px-3 py-2.5 rounded-lg text-sm font-semibold text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all border-l-4 border-transparent flex items-center gap-2.5">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
+                    Gespreksverslagen (Extern)
+                </button>
+                <button onclick="switchTab('logs_int')" id="tab-logs_int" class="sidebar-tab w-full text-left px-3 py-2.5 rounded-lg text-sm font-semibold text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all border-l-4 border-transparent flex items-center gap-2.5">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
+                    Interne Afstemming
+                </button>
+            </nav>
+            
+            <div class="p-4 border-t border-gray-100 dark:border-gray-800 text-xs text-gray-400 dark:text-gray-500">
+                <p id="lastSaved">Opgeslagen: -</p>
+            </div>
+        </aside>
+
+        <!-- Main Workspace Area -->
+        <main class="flex-1 overflow-y-auto relative p-4 md:p-8 scroll-smooth" id="main-scroll-area">
+            <div class="max-w-7xl mx-auto pb-12">
+                
+                <!-- Print Header -->
+                <div id="print-header" class="border-b-2 border-somBlue mb-8 pb-4 hidden print:block">
+                    <h1 class="text-3xl font-bold text-somBlue">Projectdossier & Logboek</h1>
+                    <h2 id="print-subtitle" class="text-xl text-gray-600 mt-2"></h2>
+                    <p id="print-date" class="text-sm text-gray-400 mt-1"></p>
+                </div>
+
+                <!-- TAB: PROJECT INFO -->
+                <section id="sect_project" class="step-section block">
+                    <div class="bg-white dark:bg-darkCard rounded-2xl shadow-sm border-t-8 border-somBlue overflow-hidden">
+                        <div class="p-6 md:p-8 border-b border-gray-100 dark:border-gray-700">
+                            <h2 class="text-2xl font-bold text-somBlue">Project Informatie</h2>
+                            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1 italic">Algemene gegevens van het project en de opgave.</p>
+                        </div>
+                        <div class="p-6 md:p-8">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                                <div>
+                                    <label class="font-bold text-gray-700 dark:text-gray-200 block text-sm mb-2">Projectleider / Verantwoordelijke</label>
+                                    <input type="text" id="proj_leader" class="w-full p-3 border border-slate-200 dark:border-slate-700 rounded-lg dark:bg-slate-800 dark:text-white focus:ring-2 focus:ring-somBlue focus:outline-none bg-slate-50/50 text-sm transition-all" placeholder="Naam projectleider..." oninput="autoSave()">
+                                </div>
+                                <div>
+                                    <label class="font-bold text-gray-700 dark:text-gray-200 block text-sm mb-2">Status Project</label>
+                                    <select id="proj_status" class="w-full p-3 border border-slate-200 dark:border-slate-700 rounded-lg dark:bg-slate-800 dark:text-white focus:ring-2 focus:ring-somBlue focus:outline-none bg-slate-50/50 text-sm transition-all cursor-pointer" onchange="autoSave()">
+                                        <option value="Initiatiefase">Initiatiefase</option>
+                                        <option value="Ontwerpfase">Ontwerpfase</option>
+                                        <option value="Uitvoeringsfase">Uitvoeringsfase</option>
+                                        <option value="Beheerfase">Beheerfase</option>
+                                        <option value="Afgerond">Afgerond</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="mb-6">
+                                <label class="font-bold text-gray-700 dark:text-gray-200 block text-sm mb-2">Omschrijving Opgave</label>
+                                <textarea id="proj_description" rows="4" class="w-full p-3 border border-slate-200 dark:border-slate-700 rounded-lg dark:bg-slate-800 dark:text-white focus:ring-2 focus:ring-somBlue focus:outline-none text-sm transition-all" placeholder="Wat is de kern van de opgave? Wat willen we bereiken?" oninput="autoSave()"></textarea>
+                            </div>
+                            <div class="flex justify-end pt-4">
+                                <button onclick="switchTab('contacts')" class="bg-somBlue text-white px-6 py-2.5 rounded-lg font-bold hover:bg-somDarkBlue transition shadow-md inline-flex items-center gap-2">
+                                    Naar Contacten
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- TAB: CONTACTEN -->
+                <section id="sect_contacts" class="step-section hidden">
+                    <div class="bg-white dark:bg-darkCard rounded-2xl shadow-sm border-t-8 border-somOrange overflow-hidden">
+                        <div class="p-6 md:p-8 border-b border-gray-100 dark:border-gray-700">
+                            <h2 class="text-2xl font-bold text-somOrange">Relaties & Contacten</h2>
+                            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1 italic">Beheer hier alle externe stakeholders, organisaties en aanwonenden.</p>
+                        </div>
+                        <div class="p-6 md:p-8">
+                            <!-- Add form -->
+                            <div class="bg-slate-50 dark:bg-slate-900/50 p-5 rounded-xl border border-slate-200 dark:border-slate-800 mb-8 no-print shadow-sm">
+                                <h3 class="font-bold text-slate-800 dark:text-white text-base mb-4">Nieuw Contact Toevoegen</h3>
+                                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+                                    <input type="text" id="add_org" placeholder="Organisatie / Groepnaam *" class="p-2.5 border border-slate-200 dark:border-slate-700 rounded-lg dark:bg-slate-800 dark:text-white text-sm focus:ring-2 focus:ring-somOrange focus:outline-none">
+                                    <input type="text" id="add_person" placeholder="Contactpersoon (Naam)" class="p-2.5 border border-slate-200 dark:border-slate-700 rounded-lg dark:bg-slate-800 dark:text-white text-sm focus:ring-2 focus:ring-somOrange focus:outline-none">
+                                    <select id="add_role" class="p-2.5 border border-slate-200 dark:border-slate-700 rounded-lg dark:bg-slate-800 dark:text-white text-sm focus:ring-2 focus:ring-somOrange focus:outline-none">
+                                        <option value="Aanwonende">Aanwonende / Bewoner</option>
+                                        <option value="Ondernemer">Ondernemer / Bedrijf</option>
+                                        <option value="Overheid/Nuts">Overheid / Nutspartij</option>
+                                        <option value="Belangengroep">Belangengroep</option>
+                                        <option value="Overig">Overig</option>
+                                    </select>
+                                    <input type="text" id="add_phone" placeholder="Telefoonnummer" class="p-2.5 border border-slate-200 dark:border-slate-700 rounded-lg dark:bg-slate-800 dark:text-white text-sm focus:ring-2 focus:ring-somOrange focus:outline-none">
+                                    <input type="email" id="add_email" placeholder="E-mailadres" class="p-2.5 border border-slate-200 dark:border-slate-700 rounded-lg dark:bg-slate-800 dark:text-white text-sm focus:ring-2 focus:ring-somOrange focus:outline-none">
+                                    <input type="text" id="add_address" placeholder="Adres / Woonplaats (voor kaart)" class="p-2.5 border border-slate-200 dark:border-slate-700 rounded-lg dark:bg-slate-800 dark:text-white text-sm focus:ring-2 focus:ring-somOrange focus:outline-none" onkeypress="if(event.key === 'Enter') addContact()">
+                                </div>
+                                <div class="flex justify-end">
+                                    <button onclick="addContact()" class="bg-somOrange text-white px-6 py-2.5 rounded-lg font-bold hover:bg-orange-600 transition shadow-sm text-sm">Contact Toevoegen</button>
+                                </div>
+                            </div>
+
+                            <!-- List -->
+                            <div class="mb-8">
+                                <h3 class="font-bold text-slate-800 dark:text-white text-lg mb-4">Contactenlijst</h3>
+                                <div class="overflow-x-auto border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm">
+                                    <table class="w-full text-sm text-left border-collapse min-w-[1000px]">
+                                        <thead class="text-xs text-slate-700 uppercase bg-slate-50 dark:bg-slate-800 dark:text-gray-300 border-b border-slate-200 dark:border-slate-700">
+                                            <tr>
+                                                <th class="p-3 w-1/5">Organisatie / Groep</th>
+                                                <th class="p-3 w-1/6">Persoon</th>
+                                                <th class="p-3 w-1/6">Telefoon</th>
+                                                <th class="p-3 w-1/5">E-mail</th>
+                                                <th class="p-3 w-1/6">Adres / Rol</th>
+                                                <th class="p-3 text-center no-print">Acties</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="contacts_tbody" class="dark:text-gray-200 divide-y divide-slate-100 dark:divide-slate-700 bg-white dark:bg-slate-900">
+                                            <!-- JS Renders here -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <!-- Map -->
+                            <div class="border border-slate-200 dark:border-slate-700 rounded-xl p-1 shadow-sm h-[400px] relative w-full overflow-hidden bg-white dark:bg-slate-850">
+                                <div id="map-container" class="w-full h-full rounded-lg z-10"></div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- TAB: GESPREKKEN LOGBOEK EXTERN -->
+                <section id="sect_logs_ext" class="step-section hidden">
+                    <div class="bg-white dark:bg-darkCard rounded-2xl shadow-sm border-t-8 border-somTeal overflow-hidden">
+                        <div class="p-6 md:p-8 border-b border-gray-100 dark:border-gray-700">
+                            <h2 class="text-2xl font-bold text-somTeal">Gespreksverslagen (Extern)</h2>
+                            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1 italic">Logboek van alle communicatie met externe partijen en stakeholders.</p>
+                        </div>
+                        <div class="p-6 md:p-8">
+                            
+                            <!-- Add Log Form -->
+                            <div class="bg-teal-50/50 dark:bg-teal-950/20 p-5 rounded-xl border border-teal-100 dark:border-teal-900/50 mb-8 no-print shadow-sm">
+                                <h3 class="font-bold text-slate-800 dark:text-white text-base mb-4">Nieuw Verslag Toevoegen</h3>
+                                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                                    <div>
+                                        <label class="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">Contact / Stakeholder *</label>
+                                        <select id="log_contact_id" class="w-full p-2.5 border border-slate-200 dark:border-slate-700 rounded-lg dark:bg-slate-800 dark:text-white text-sm focus:ring-2 focus:ring-somTeal focus:outline-none">
+                                            <!-- JS Populates -->
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">Datum</label>
+                                        <input type="date" id="log_date" class="w-full p-2.5 border border-slate-200 dark:border-slate-700 rounded-lg dark:bg-slate-800 dark:text-white text-sm focus:ring-2 focus:ring-somTeal focus:outline-none">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">Contacttype</label>
+                                        <select id="log_type" class="w-full p-2.5 border border-slate-200 dark:border-slate-700 rounded-lg dark:bg-slate-800 dark:text-white text-sm focus:ring-2 focus:ring-somTeal focus:outline-none">
+                                            <option value="Telefoon">Telefoon</option>
+                                            <option value="E-mail">E-mail</option>
+                                            <option value="Fysiek gesprek">Fysiek gesprek / Overleg</option>
+                                            <option value="Teams/Online">Teams / Online meeting</option>
+                                            <option value="Brief">Brief</option>
+                                            <option value="Overig">Overig</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="mb-4">
+                                    <label class="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">Verslag / Notities</label>
+                                    <textarea id="log_text" rows="3" class="w-full p-3 border border-slate-200 dark:border-slate-700 rounded-lg dark:bg-slate-800 dark:text-white focus:ring-2 focus:ring-somTeal focus:outline-none text-sm transition-all" placeholder="Schrijf hier het verslag of de gemaakte afspraken..."></textarea>
+                                </div>
+                                <div class="flex justify-end">
+                                    <button onclick="addExternalLog()" class="bg-somTeal text-white px-6 py-2.5 rounded-lg font-bold hover:bg-teal-600 transition shadow-sm text-sm">Verslag Opslaan</button>
+                                </div>
+                            </div>
+
+                            <!-- Filter & List -->
+                            <div class="mb-6 flex justify-between items-end">
+                                <h3 class="font-bold text-slate-800 dark:text-white text-lg">Logboek</h3>
+                                <select id="filter_contact_id" onchange="renderExternalLogs()" class="p-2 border border-slate-200 dark:border-slate-700 rounded-lg dark:bg-slate-800 dark:text-white text-sm focus:outline-none no-print">
+                                    <option value="all">Alle Contacten tonen</option>
+                                    <!-- JS Populates -->
+                                </select>
+                            </div>
+
+                            <div id="externalLogsContainer" class="space-y-4">
+                                <!-- JS Renders Logs here -->
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- TAB: INTERNE AFSTEMMING -->
+                <section id="sect_logs_int" class="step-section hidden">
+                    <div class="bg-white dark:bg-darkCard rounded-2xl shadow-sm border-t-8 border-somBlue overflow-hidden">
+                        <div class="p-6 md:p-8 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
+                            <div>
+                                <h2 class="text-2xl font-bold text-somBlue">Interne Afstemming</h2>
+                                <p class="text-sm text-gray-500 dark:text-gray-400 mt-1 italic">Logboek van interne overleggen met collega's, disciplines en management.</p>
+                            </div>
+                            <button onclick="addInternalLog()" class="text-xs bg-somBlue text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition shadow-sm no-print font-bold flex items-center gap-1">
+                                + Nieuw overleg toevoegen
+                            </button>
+                        </div>
+                        <div class="p-6 md:p-8">
+                            <div id="internalLogsContainer" class="space-y-5">
+                                <!-- JS Renders here -->
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // --- SAFE LOCALSTORAGE WRAPPER ---
+        const safeStorage = {
+            get: function(key) { try { return localStorage.getItem(key); } catch(e) { return null; } },
+            set: function(key, val) { try { localStorage.setItem(key, val); } catch(e) { console.warn("Opslag geblokkeerd"); } },
+            remove: function(key) { try { localStorage.removeItem(key); } catch(e) { console.warn("Opslag geblokkeerd"); } }
+        };
+
+        // --- DATA STRUCTURES ---
+        let crmData = {
+            projectInfo: { name: '', leader: '', status: 'Initiatiefase', description: '' },
+            contacts: [], // {id, org, person, role, phone, email, address, lat, lon}
+            externalLogs: [], // {id, contactId, date, type, text}
+            internalLogs: [] // {id, date, participants, text}
+        };
+
+        let map;
+        let markers = [];
+        let activeFileHandle = null;
+
+        // --- INITIALIZATION ---
+        window.onload = function() {
+            setTimeout(() => { dismissSplash(); }, 2500);
+            loadData();
+            
+            // Render UI
+            renderContacts();
+            updateContactDropdowns();
+            renderExternalLogs();
+            renderInternalLogs();
+            initMap();
+            checkTheme();
+            
+            // Set input listeners for Project Info to auto-save
+            document.getElementById('project_name').value = crmData.projectInfo.name;
+            document.getElementById('proj_leader').value = crmData.projectInfo.leader;
+            document.getElementById('proj_status').value = crmData.projectInfo.status;
+            document.getElementById('proj_description').value = crmData.projectInfo.description;
+        };
+
+        function dismissSplash() {
+            const splash = document.getElementById('splash-screen');
+            if(splash) {
+                splash.classList.add('splash-hidden');
+                setTimeout(() => splash.remove(), 600);
+            }
+        }
+
+        // --- UI NAVIGATION ---
+        function switchTab(tabId) {
+            document.querySelectorAll('.step-section').forEach(sect => sect.classList.add('hidden', 'block'));
+            document.querySelectorAll('.step-section').forEach(sect => sect.classList.remove('block'));
+            
+            const target = document.getElementById('sect_' + tabId);
+            if(target) {
+                target.classList.remove('hidden');
+                target.classList.add('block');
+            }
+            
+            document.querySelectorAll('.sidebar-tab').forEach(tab => {
+                tab.classList.remove('bg-blue-50', 'text-somBlue', 'border-somBlue', 'dark:bg-blue-900/30', 'dark:text-blue-400');
+                tab.classList.add('text-gray-600', 'border-transparent', 'dark:text-gray-400');
+            });
+            const activeTabBtn = document.getElementById('tab-' + tabId);
+            if(activeTabBtn) {
+                activeTabBtn.classList.remove('text-gray-600', 'border-transparent', 'dark:text-gray-400');
+                activeTabBtn.classList.add('bg-blue-50', 'text-somBlue', 'border-somBlue', 'dark:bg-blue-900/30', 'dark:text-blue-400');
+            }
+
+            document.getElementById('main-scroll-area').scrollTop = 0;
+
+            if(tabId === 'contacts' && map) {
+                setTimeout(() => { map.invalidateSize(); updateMapMarkers(); }, 150);
+            }
+            // Auto resize textareas in target
+            setTimeout(() => {
+                target.querySelectorAll('textarea').forEach(el => autoResize(el));
+            }, 50);
+        }
+
+        function toggleDropdown(id, event) {
+            if(event) event.stopPropagation();
+            const el = document.getElementById(id);
+            const isHidden = el.classList.contains('hidden');
+            closeAllDropdowns();
+            if(isHidden) el.classList.remove('hidden');
+        }
+        function closeAllDropdowns() {
+            document.querySelectorAll('.dropdown-content').forEach(el => el.classList.add('hidden'));
+        }
+        document.addEventListener('click', function(event) {
+            if (!event.target.closest('.relative')) closeAllDropdowns();
+        });
+
+        // --- DATA MANAGEMENT ---
+        function autoSave() {
+            crmData.projectInfo.name = document.getElementById('project_name').value;
+            crmData.projectInfo.leader = document.getElementById('proj_leader').value;
+            crmData.projectInfo.status = document.getElementById('proj_status').value;
+            crmData.projectInfo.description = document.getElementById('proj_description').value;
+            
+            saveDataLocal();
+            showSaveIndicator();
+        }
+
+        function saveDataLocal() {
+            const now = new Date();
+            crmData.lastSaved = now.toLocaleDateString('nl-NL') + ' ' + now.toLocaleTimeString('nl-NL', {hour: '2-digit', minute:'2-digit'});
+            safeStorage.set('crmData_local', JSON.stringify(crmData));
+            document.getElementById('lastSaved').innerText = "Opgeslagen: " + crmData.lastSaved;
+        }
+
+        function loadData() {
+            const raw = safeStorage.get('crmData_local');
+            if(raw) {
+                try {
+                    const parsed = JSON.parse(raw);
+                    // Merge to ensure no missing arrays if old version
+                    crmData = { ...crmData, ...parsed };
+                } catch(e) { console.error("Error parsing saved data"); }
+            }
+            if(crmData.lastSaved) document.getElementById('lastSaved').innerText = "Opgeslagen: " + crmData.lastSaved;
+        }
+
+        function showSaveIndicator() {
+            const ind = document.getElementById('save-indicator');
+            ind.classList.remove('hidden');
+            ind.classList.add('flex');
+            setTimeout(() => {
+                ind.classList.add('hidden');
+                ind.classList.remove('flex');
+            }, 1500);
+        }
+
+        // --- CONTACTS LOGIC ---
+        function addContact() {
+            const org = document.getElementById('add_org').value.trim();
+            const person = document.getElementById('add_person').value.trim();
+            const role = document.getElementById('add_role').value;
+            const phone = document.getElementById('add_phone').value.trim();
+            const email = document.getElementById('add_email').value.trim();
+            const address = document.getElementById('add_address').value.trim();
+
+            if(!org && !person) { alert("Vul in ieder geval een organisatie of naam in."); return; }
+
+            const newId = Date.now().toString();
+            const newContact = { id: newId, org, person, role, phone, email, address, lat: null, lon: null };
+
+            if(address) {
+                fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&email=info@example.com`)
+                    .then(r => r.json())
+                    .then(data => {
+                        if(data && data.length > 0) {
+                            newContact.lat = data[0].lat;
+                            newContact.lon = data[0].lon;
+                        }
+                        finalizeAddContact(newContact);
+                    })
+                    .catch(() => finalizeAddContact(newContact));
+            } else {
+                finalizeAddContact(newContact);
+            }
+        }
+
+        function finalizeAddContact(contact) {
+            crmData.contacts.push(contact);
+            autoSave();
+            
+            // Reset form
+            ['add_org','add_person','add_phone','add_email','add_address'].forEach(id => document.getElementById(id).value = '');
+            
+            renderContacts();
+            updateContactDropdowns();
+            updateMapMarkers();
+        }
+
+        function deleteContact(id) {
+            showModal("Contact verwijderen", "Weet je zeker dat je dit contact wilt verwijderen? Logboekverslagen van dit contact blijven bewaard, maar tonen 'Onbekend contact'.", () => {
+                crmData.contacts = crmData.contacts.filter(c => c.id !== id);
+                autoSave();
+                renderContacts();
+                updateContactDropdowns();
+                renderExternalLogs();
+                updateMapMarkers();
+            });
+        }
+
+        function renderContacts() {
+            const tbody = document.getElementById('contacts_tbody');
+            if(!tbody) return;
+            tbody.innerHTML = '';
+            
+            if(crmData.contacts.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-gray-500 italic">Geen contacten gevonden. Voeg er hierboven een toe.</td></tr>';
+                return;
+            }
+
+            crmData.contacts.forEach((c) => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-orange-50/30 dark:hover:bg-slate-800/40 transition-colors group";
+                
+                tr.innerHTML = `
+                    <td class="p-0 border-r dark:border-slate-700 align-top relative min-h-[48px]">
+                        <input type="text" class="absolute inset-0 w-full h-full px-3 py-2 bg-transparent border-none focus:ring-2 focus:ring-inset focus:ring-somOrange focus:bg-white dark:focus:bg-slate-800 text-sm font-bold" value="${c.org}" onchange="updateContactField('${c.id}', 'org', this.value)">
+                    </td>
+                    <td class="p-0 border-r dark:border-slate-700 align-top relative min-h-[48px]">
+                        <input type="text" class="absolute inset-0 w-full h-full px-3 py-2 bg-transparent border-none focus:ring-2 focus:ring-inset focus:ring-somOrange focus:bg-white dark:focus:bg-slate-800 text-sm" value="${c.person}" onchange="updateContactField('${c.id}', 'person', this.value)">
+                    </td>
+                    <td class="p-0 border-r dark:border-slate-700 align-top relative min-h-[48px]">
+                        <input type="text" class="absolute inset-0 w-full h-full px-3 py-2 bg-transparent border-none focus:ring-2 focus:ring-inset focus:ring-somOrange focus:bg-white dark:focus:bg-slate-800 text-sm" value="${c.phone}" onchange="updateContactField('${c.id}', 'phone', this.value)">
+                    </td>
+                    <td class="p-0 border-r dark:border-slate-700 align-top relative min-h-[48px]">
+                        <input type="email" class="absolute inset-0 w-full h-full px-3 py-2 bg-transparent border-none focus:ring-2 focus:ring-inset focus:ring-somOrange focus:bg-white dark:focus:bg-slate-800 text-sm text-blue-600 dark:text-blue-400" value="${c.email}" onchange="updateContactField('${c.id}', 'email', this.value)">
+                    </td>
+                    <td class="p-2 border-r dark:border-slate-700 align-top flex flex-col gap-1 min-h-[48px]">
+                        <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">${c.role}</span>
+                        <input type="text" class="w-full bg-transparent border-b border-dashed border-gray-300 dark:border-gray-600 focus:border-somOrange focus:outline-none text-xs" value="${c.address}" onchange="updateContactField('${c.id}', 'address', this.value, true)" title="Druk Enter voor nieuwe kaartzoekopdracht">
+                    </td>
+                    <td class="p-2 text-center align-middle no-print min-h-[48px] whitespace-nowrap">
+                        <button onclick="goToAddLog('${c.id}')" class="text-somTeal hover:text-teal-600 transition-colors p-1 mr-1" title="Verslag toevoegen">
+                            <svg class="w-4 h-4 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                        </button>
+                        <button onclick="deleteContact('${c.id}')" class="text-red-400 hover:text-red-600 transition-colors p-1" title="Verwijder contact">
+                            <svg class="w-4 h-4 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function updateContactField(id, field, value, requiresGeocode = false) {
+            const contact = crmData.contacts.find(c => c.id === id);
+            if(contact) {
+                contact[field] = value;
+                if(requiresGeocode && value.trim() !== '') {
+                    fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(value)}&email=info@example.com`)
+                        .then(r => r.json())
+                        .then(data => {
+                            if(data && data.length > 0) { contact.lat = data[0].lat; contact.lon = data[0].lon; }
+                            else { contact.lat = null; contact.lon = null; }
+                            autoSave(); updateMapMarkers();
+                        });
+                } else if (requiresGeocode && value.trim() === '') {
+                    contact.lat = null; contact.lon = null;
+                    autoSave(); updateMapMarkers();
+                } else {
+                    autoSave();
+                    if(field === 'org' || field === 'person') {
+                        updateContactDropdowns(); renderExternalLogs();
+                    }
+                }
+            }
+        }
+
+        // --- LOGBOOK EXTERNAL LOGIC ---
+        function goToAddLog(contactId) {
+            switchTab('logs_ext');
+            const addSelect = document.getElementById('log_contact_id');
+            const filterSelect = document.getElementById('filter_contact_id');
+            
+            if (addSelect) addSelect.value = contactId;
+            if (filterSelect) {
+                filterSelect.value = contactId;
+                renderExternalLogs();
+            }
+            
+            setTimeout(() => {
+                const textInput = document.getElementById('log_text');
+                if (textInput) textInput.focus();
+            }, 100);
+        }
+
+        function updateContactDropdowns() {
+            const addSelect = document.getElementById('log_contact_id');
+            const filterSelect = document.getElementById('filter_contact_id');
+            if(!addSelect || !filterSelect) return;
+
+            const currentFilter = filterSelect.value;
+            
+            let options = '';
+            crmData.contacts.forEach(c => {
+                const displayName = c.org ? (c.person ? `${c.org} (${c.person})` : c.org) : c.person;
+                options += `<option value="${c.id}">${displayName}</option>`;
+            });
+
+            addSelect.innerHTML = options || '<option value="" disabled>Voeg eerst contacten toe...</option>';
+            filterSelect.innerHTML = '<option value="all">Alle Contacten tonen</option>' + options;
+            
+            // Herstel filter als die nog bestaat
+            if (crmData.contacts.find(c => c.id === currentFilter)) {
+                filterSelect.value = currentFilter;
+            }
+        }
+
+        function addExternalLog() {
+            const contactId = document.getElementById('log_contact_id').value;
+            const date = document.getElementById('log_date').value || new Date().toISOString().split('T')[0];
+            const type = document.getElementById('log_type').value;
+            const text = document.getElementById('log_text').value.trim();
+
+            if(!contactId) { alert("Selecteer een contact."); return; }
+            if(!text) { alert("Verslagtekst is verplicht."); return; }
+
+            const newLog = { id: Date.now().toString(), contactId, date, type, text };
+            crmData.externalLogs.unshift(newLog); // Add to beginning (newest first)
+            
+            autoSave();
+            document.getElementById('log_text').value = '';
+            renderExternalLogs();
+        }
+
+        function deleteExternalLog(id) {
+            if(confirm("Verslag verwijderen?")) {
+                crmData.externalLogs = crmData.externalLogs.filter(l => l.id !== id);
+                autoSave();
+                renderExternalLogs();
+            }
+        }
+
+        function renderExternalLogs() {
+            const container = document.getElementById('externalLogsContainer');
+            if(!container) return;
+            container.innerHTML = '';
+
+            const filterId = document.getElementById('filter_contact_id').value;
+            let logsToShow = crmData.externalLogs;
+            
+            if(filterId !== 'all') {
+                logsToShow = logsToShow.filter(l => l.contactId === filterId);
+            }
+
+            if(logsToShow.length === 0) {
+                container.innerHTML = `<div class="p-6 bg-slate-50 dark:bg-slate-900/30 rounded-xl text-center text-gray-500 italic border border-slate-100 dark:border-slate-800">Geen verslagen gevonden voor deze selectie.</div>`;
+                return;
+            }
+
+            // Groepeer de logs op contactId
+            const groupedLogs = {};
+            logsToShow.forEach(log => {
+                if (!groupedLogs[log.contactId]) {
+                    groupedLogs[log.contactId] = [];
+                }
+                groupedLogs[log.contactId].push(log);
+            });
+
+            // Loop door de gegroepeerde logs heen en render de blokken
+            for (const [contactId, logs] of Object.entries(groupedLogs)) {
+                // Sorteer de logs binnen de groep op datum (nieuwste eerst)
+                logs.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+                const contact = crmData.contacts.find(c => c.id === contactId);
+                const contactName = contact ? (contact.org ? (contact.person ? `${contact.org} (${contact.person})` : contact.org) : contact.person) : 'Onbekend / Verwijderd contact';
+
+                const groupDiv = document.createElement('div');
+                groupDiv.className = "bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700/70 rounded-xl overflow-hidden shadow-sm transition-all mb-4";
+
+                let innerHTML = `
+                    <div class="bg-slate-50 dark:bg-slate-800/80 p-4 border-b border-slate-200 dark:border-slate-700/70 flex justify-between items-center">
+                        <h4 class="font-bold text-lg text-somDarkBlue dark:text-blue-300 flex items-center gap-2">
+                            <span class="bg-somTeal/10 text-somTeal p-1.5 rounded-lg">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                            </span>
+                            ${contactName}
+                        </h4>
+                        <span class="text-xs font-bold text-somTeal bg-teal-50 dark:bg-teal-900/30 px-2.5 py-1 rounded-full border border-teal-100 dark:border-teal-800/50 shadow-sm">${logs.length} verslag(en)</span>
+                    </div>
+                    <div class="p-5 space-y-5 divide-y divide-slate-100 dark:divide-slate-700/50">
+                `;
+
+                logs.forEach((log, index) => {
+                    let icon = '💬';
+                    if(log.type.includes('Telefoon')) icon = '📞';
+                    if(log.type.includes('E-mail')) icon = '✉️';
+                    if(log.type.includes('Fysiek') || log.type.includes('Teams')) icon = '🤝';
+                    
+                    const dateObj = new Date(log.date);
+                    const displayDate = isNaN(dateObj) ? log.date : dateObj.toLocaleDateString('nl-NL', { day: '2-digit', month: 'short', year: 'numeric' });
+
+                    const paddingTop = index > 0 ? 'pt-5' : '';
+
+                    innerHTML += `
+                        <div class="relative group/log flex flex-col sm:flex-row gap-4 ${paddingTop}">
+                            <div class="sm:w-1/4 shrink-0 sm:border-r border-slate-100 dark:border-slate-700 pr-4">
+                                <div class="text-sm text-somTeal font-bold flex items-center gap-1.5 mb-1">
+                                    ${icon} ${log.type}
+                                </div>
+                                <div class="text-xs text-gray-500 dark:text-gray-400 font-medium">${displayDate}</div>
+                            </div>
+                            <div class="sm:w-3/4 grow relative">
+                                <textarea class="w-full bg-slate-50/50 dark:bg-slate-900/20 border border-slate-200 dark:border-slate-700/50 rounded-lg p-3 focus:ring-1 focus:ring-somTeal text-sm text-gray-700 dark:text-gray-300 resize-none min-h-[70px] transition-colors" onchange="updateExternalLog('${log.id}', this.value)" oninput="autoResize(this)">${log.text}</textarea>
+                                <button onclick="deleteExternalLog('${log.id}')" class="absolute top-2 right-2 text-red-400 hover:text-red-600 opacity-0 group-hover/log:opacity-100 transition-opacity p-1.5 no-print bg-white dark:bg-slate-800 rounded-md shadow-sm border border-slate-200 dark:border-slate-600" title="Verwijder dit verslag">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                innerHTML += `</div>`; // Einde van de space-y-5 wrapper
+                groupDiv.innerHTML = innerHTML;
+                container.appendChild(groupDiv);
+            }
+
+            setTimeout(() => {
+                container.querySelectorAll('textarea').forEach(el => autoResize(el));
+            }, 10);
+        }
+        
+        function updateExternalLog(id, newText) {
+            const log = crmData.externalLogs.find(l => l.id === id);
+            if(log) { log.text = newText; autoSave(); }
+        }
+
+        // --- INTERNAL LOGIC ---
+        function addInternalLog() {
+            const newId = Date.now().toString();
+            const date = new Date().toISOString().split('T')[0];
+            crmData.internalLogs.unshift({ id: newId, date: date, participants: '', text: '' });
+            autoSave();
+            renderInternalLogs();
+        }
+
+        function deleteInternalLog(id) {
+            if(confirm("Intern overleg verwijderen?")) {
+                crmData.internalLogs = crmData.internalLogs.filter(l => l.id !== id);
+                autoSave();
+                renderInternalLogs();
+            }
+        }
+
+        function updateInternalLog(id, field, value) {
+            const log = crmData.internalLogs.find(l => l.id === id);
+            if(log) { log[field] = value; autoSave(); }
+        }
+
+        function renderInternalLogs() {
+            const container = document.getElementById('internalLogsContainer');
+            if(!container) return;
+            container.innerHTML = '';
+            
+            if(crmData.internalLogs.length === 0) {
+                container.innerHTML = '<div class="p-6 bg-slate-50 dark:bg-slate-900/30 rounded-xl text-center text-gray-500 italic border border-slate-100 dark:border-slate-800">Klik op "+ Nieuw overleg toevoegen" om een interne notitie te maken.</div>';
+                return;
+            }
+
+            crmData.internalLogs.forEach((log, idx) => {
+                const div = document.createElement('div');
+                div.className = "bg-blue-50/30 dark:bg-blue-950/10 border border-blue-100 dark:border-blue-900/40 rounded-xl p-5 relative shadow-sm group";
+                
+                div.innerHTML = `
+                    <div class="flex flex-wrap justify-between items-start mb-4 gap-4">
+                        <div class="flex items-center gap-3 w-full sm:w-auto">
+                            <span class="text-[10px] font-extrabold text-somBlue bg-blue-100/60 dark:bg-blue-900/50 px-2.5 py-1 rounded-md uppercase tracking-wider shrink-0">Interne Notitie</span>
+                            <input type="date" value="${log.date}" class="text-sm border border-slate-200 dark:border-slate-700 rounded-md px-3 py-1.5 bg-white dark:bg-slate-800 dark:text-white focus:outline-none focus:ring-1 focus:ring-somBlue transition-all font-semibold" onchange="updateInternalLog('${log.id}', 'date', this.value)">
+                        </div>
+                        <button onclick="deleteInternalLog('${log.id}')" class="absolute top-4 right-4 text-red-400 hover:text-red-600 p-1 no-print text-sm opacity-0 group-hover:opacity-100 transition-opacity" title="Verwijder notitie">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                        </button>
+                    </div>
+                    <div class="mb-3">
+                        <input type="text" placeholder="Met wie afgestemd (namen, afdeling, discipline)..." class="w-full text-sm border-b border-slate-200 dark:border-slate-700 bg-transparent px-1 py-1.5 dark:text-white focus:outline-none focus:border-somBlue font-medium" value="${log.participants}" onchange="updateInternalLog('${log.id}', 'participants', this.value)">
+                    </div>
+                    <textarea class="w-full p-3 border border-slate-200 dark:border-slate-700 rounded-lg dark:bg-slate-800 focus:ring-1 focus:ring-somBlue min-h-[80px] resize-none overflow-hidden text-sm bg-white dark:text-slate-200" placeholder="Notities, afspraken, actiepunten..." oninput="updateInternalLog('${log.id}', 'text', this.value); autoResize(this)">${log.text}</textarea>
+                `;
+                container.appendChild(div);
+            });
+
+            setTimeout(() => {
+                container.querySelectorAll('textarea').forEach(el => autoResize(el));
+            }, 10);
+        }
+
+        // --- UTILS & MAP ---
+        function autoResize(el) {
+            if(!el) return;
+            el.style.height = 'auto';
+            el.style.height = (el.scrollHeight) + 'px';
+        }
+
+        function toggleDarkMode() {
+            document.documentElement.classList.toggle('dark');
+            safeStorage.set('darkMode', document.documentElement.classList.contains('dark'));
+        }
+        function checkTheme() {
+            if (safeStorage.get('darkMode') === 'true') document.documentElement.classList.add('dark');
+        }
+
+        function initMap() {
+            if(map) return;
+            map = L.map('map-container').setView([52.1, 5.2], 8); // Center around NL approx
+            // Gebruik CartoDB tegels om "Access Blocked" meldingen van de standaard OSM servers te voorkomen
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', { attribution: '© OpenStreetMap contributors, © CARTO' }).addTo(map);
+            updateMapMarkers();
+        }
+
+        function updateMapMarkers() {
+            if(!map) return;
+            markers.forEach(m => map.removeLayer(m));
+            markers = [];
+            let bounds = L.latLngBounds();
+            let hasPoints = false;
+
+            crmData.contacts.forEach(sh => {
+                if(sh.lat && sh.lon) {
+                    const pulseIcon = L.divIcon({
+                        className: 'custom-div-icon',
+                        html: `<div class="relative flex items-center justify-center">
+                                <span class="animate-ping absolute inline-flex h-6 w-6 rounded-full bg-somOrange/40 opacity-75"></span>
+                                <span class="relative inline-flex rounded-full h-3.5 w-3.5 bg-somOrange border-2 border-white shadow-md"></span>
+                               </div>`,
+                        iconSize: [24, 24],
+                        iconAnchor: [12, 12]
+                    });
+
+                    const displayName = sh.org ? (sh.person ? `${sh.org} (${sh.person})` : sh.org) : sh.person;
+                    const marker = L.marker([sh.lat, sh.lon], { icon: pulseIcon }).addTo(map);
+                    marker.bindPopup(`<b>${displayName}</b><br>${sh.address || ''}<br><span class="text-xs text-gray-500">${sh.role}</span>`);
+                    markers.push(marker);
+                    bounds.extend([sh.lat, sh.lon]);
+                    hasPoints = true;
+                }
+            });
+            if(hasPoints) {
+                map.fitBounds(bounds, {padding: [50, 50], maxZoom: 15});
+            }
+        }
+
+        // --- FILE HANDLING ---
+        async function openProject() {
+            if (window.showOpenFilePicker) {
+                try {
+                    const [handle] = await window.showOpenFilePicker({ types: [{ description: 'JSON', accept: {'application/json': ['.json']} }] });
+                    const file = await handle.getFile();
+                    const contents = await file.text();
+                    safeStorage.set('crmData_local', contents);
+                    location.reload();
+                } catch (err) {}
+            } else {
+                const input = document.createElement('input');
+                input.type = 'file'; input.accept = '.json';
+                input.onchange = (e) => {
+                    const file = e.target.files[0];
+                    if(!file) return;
+                    const reader = new FileReader();
+                    reader.onload = (evt) => { safeStorage.set('crmData_local', evt.target.result); location.reload(); };
+                    reader.readAsText(file);
+                };
+                input.click();
+            }
+        }
+
+        async function saveProjectAs() {
+            autoSave();
+            const data = safeStorage.get('crmData_local');
+            const defaultName = 'Project_Logboek_' + (crmData.projectInfo.name || 'Naamloos') + '.json';
+
+            if (window.showSaveFilePicker) {
+                try {
+                    activeFileHandle = await window.showSaveFilePicker({ suggestedName: defaultName, types: [{ description: 'JSON', accept: {'application/json': ['.json']} }] });
+                    const writable = await activeFileHandle.createWritable();
+                    await writable.write(data);
+                    await writable.close();
+                } catch (err) {
+                    if(err.name !== 'AbortError') fallbackDownload(data, defaultName);
+                }
+            } else {
+                fallbackDownload(data, defaultName);
+            }
+        }
+
+        function fallbackDownload(data, filename) {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(data);
+            const anchor = document.createElement('a');
+            anchor.setAttribute("href", dataStr);
+            anchor.setAttribute("download", filename);
+            document.body.appendChild(anchor);
+            anchor.click(); anchor.remove();
+        }
+        
+        function confirmReset() {
+            showModal("Nieuw / Reset", "Weet je zeker dat je met een leeg logboek wilt beginnen? Niet-opgeslagen wijzigingen gaan verloren.", () => {
+                safeStorage.remove('crmData_local');
+                location.reload();
+            });
+        }
+
+        // --- EXPORT TO WORD / EXCEL ---
+        function exportToWord() {
+            autoSave();
+            const pName = crmData.projectInfo.name || 'Onbekend Project';
+
+            let content = `<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Projectdossier</title><style>
+                body{font-family:'Calibri','Arial',sans-serif;font-size:11pt; color: #333;}
+                h1{color:#002f5d;font-size:22pt;border-bottom:2px solid #0097d8;padding-bottom:5px; margin-top:0;}
+                h2{color:#0097d8;font-size:16pt;margin-top:20pt; border-bottom:1px solid #e5e7eb; padding-bottom:3px;}
+                h3{color:#002f5d;font-size:13pt;margin-top:15pt; margin-bottom:4pt;}
+                table{border-collapse:collapse;width:100%;margin-bottom:15pt;}
+                th,td{border:1px solid #cbd5e1;padding:6px;vertical-align:top;}
+                th{background-color:#f3f4f6;text-align:left;font-weight:bold;}
+                p{margin-top:0; margin-bottom:10pt; line-height: 1.4;}
+                .empty { color: #9ca3af; font-style: italic; }
+                .log-meta { font-size: 10pt; color: #6b7280; border-bottom: 1px solid #eee; padding-bottom: 3px; margin-bottom: 5px; }
+            </style></head><body>`;
+
+            // Project Info
+            content += `<h1>Projectdossier & Logboek: ${pName}</h1>`;
+            content += `<p><strong>Datum export:</strong> ${new Date().toLocaleDateString('nl-NL')}</p>`;
+            content += `<table>
+                <tr><td width="30%"><strong>Projectleider</strong></td><td>${crmData.projectInfo.leader || '-'}</td></tr>
+                <tr><td><strong>Status</strong></td><td>${crmData.projectInfo.status}</td></tr>
+                <tr><td><strong>Omschrijving</strong></td><td>${crmData.projectInfo.description ? crmData.projectInfo.description.replace(/\n/g, '<br>') : '-'}</td></tr>
+            </table>`;
+
+            // Contacts List
+            content += `<h2>1. Contacten & Relaties</h2>`;
+            if (crmData.contacts.length > 0) {
+                content += `<table><tr><th>Organisatie</th><th>Persoon</th><th>Rol</th><th>Tel / E-mail</th><th>Adres</th></tr>`;
+                crmData.contacts.forEach(c => {
+                    content += `<tr>
+                        <td><strong>${c.org}</strong></td>
+                        <td>${c.person}</td>
+                        <td>${c.role}</td>
+                        <td>${c.phone}<br><a href="mailto:${c.email}">${c.email}</a></td>
+                        <td>${c.address}</td>
+                    </tr>`;
+                });
+                content += `</table>`;
+            } else {
+                content += `<p class="empty">Geen contacten geregistreerd.</p>`;
+            }
+
+            // External Logs (grouped by contact for easier reading in a dossier)
+            content += `<h2>2. Gespreksverslagen (Extern)</h2>`;
+            if (crmData.externalLogs.length > 0) {
+                // Group logs by contact
+                let logsByContact = {};
+                crmData.externalLogs.forEach(log => {
+                    if(!logsByContact[log.contactId]) logsByContact[log.contactId] = [];
+                    logsByContact[log.contactId].push(log);
+                });
+
+                for (const [cid, logs] of Object.entries(logsByContact)) {
+                    const c = crmData.contacts.find(x => x.id === cid);
+                    const cName = c ? (c.org ? `${c.org} (${c.person})` : c.person) : 'Onbekend contact';
+                    content += `<h3>Dossier: ${cName}</h3>`;
+                    
+                    logs.forEach(log => {
+                        content += `<div style="margin-bottom: 15px; padding: 10px; background-color: #f8fafc; border: 1px solid #e2e8f0;">
+                            <div class="log-meta"><strong>Datum:</strong> ${log.date} | <strong>Type:</strong> ${log.type}</div>
+                            <div>${log.text.replace(/\n/g, '<br>')}</div>
+                        </div>`;
+                    });
+                }
+            } else {
+                content += `<p class="empty">Geen externe gespreksverslagen gelogd.</p>`;
+            }
+
+            // Internal Logs
+            content += `<h2>3. Interne Afstemming</h2>`;
+            if (crmData.internalLogs.length > 0) {
+                crmData.internalLogs.forEach(log => {
+                    content += `<div style="margin-bottom: 15px; padding: 10px; border-left: 4px solid #0097d8; background-color: #f0f9ff;">
+                        <div class="log-meta"><strong>Datum:</strong> ${log.date} | <strong>Betrokkenen:</strong> ${log.participants || 'Onbekend'}</div>
+                        <div>${log.text.replace(/\n/g, '<br>')}</div>
+                    </div>`;
+                });
+            } else {
+                content += `<p class="empty">Geen interne overleggen gelogd.</p>`;
+            }
+
+            content += `</body></html>`;
+            const blob = new Blob(['\ufeff', content], { type: 'application/msword' });
+            const url = 'data:application/vnd.ms-word;charset=utf-8,' + encodeURIComponent(content);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `Projectdossier_${pName.replace(/\s+/g, '_')}.doc`;
+            document.body.appendChild(link); link.click(); link.remove();
+        }
+
+        function exportContactsToCSV() {
+            if (crmData.contacts.length === 0) { alert("Geen contacten om te exporteren."); return; }
+            
+            let csv = "Organisatie;Persoon;Rol;Telefoon;Email;Adres\n";
+            crmData.contacts.forEach(c => {
+                const row = [c.org, c.person, c.role, c.phone, c.email, c.address].map(val => {
+                    return `"${String(val || '').replace(/"/g, '""')}"`;
+                });
+                csv += row.join(";") + "\n";
+            });
+
+            const blob = new Blob(["\uFEFF" + csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            const pName = crmData.projectInfo.name || 'Project';
+            link.download = `Contacten_${pName.replace(/\s+/g, '_')}.csv`;
+            document.body.appendChild(link); link.click(); link.remove();
+        }
+
+        // PRINT EVENTS
+        window.addEventListener('beforeprint', () => {
+            document.querySelectorAll('.step-section').forEach(sect => {
+                sect.classList.remove('hidden'); sect.classList.add('block');
+                sect.querySelectorAll('textarea').forEach(el => autoResize(el));
+            });
+        });
+        window.addEventListener('afterprint', () => {
+            document.querySelectorAll('.step-section').forEach(sect => {
+                sect.classList.add('hidden'); sect.classList.remove('block');
+            });
+            switchTab('project'); // Reset to default view
+        });
+    </script>
+</body>
+</html>
